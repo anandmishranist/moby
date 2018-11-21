@@ -13,4 +13,5 @@ import (
 	_ "github.com/docker/docker/daemon/logger/logentries"
 	_ "github.com/docker/docker/daemon/logger/splunk"
 	_ "github.com/docker/docker/daemon/logger/syslog"
+	_ "github.com/docker/docker/daemon/logger/forenlog"
 )
