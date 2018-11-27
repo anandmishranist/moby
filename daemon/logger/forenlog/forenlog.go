@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"log"
-	"os/exec"
 
 	forenlog "github.com/RackSec/srslog"
 
@@ -66,26 +64,10 @@ func init() {
 	if err := logger.RegisterLogOptValidator(name, ValidateLogOpt); err != nil {
 		logrus.Fatal(err)
 	}
-fmt.Println("I am in forenlog-function - init")	
+	fmt.Println("I am in forenlog-function - init")	
 }
 //-------------------SystemCall Print----------------------------------
-func prinyProcessID{
-	cmd := exec.Command("ps", "-A")	
-		out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
-	fmt.Printf("combined out:\n%s\n", string(out))
-}
 
-func straceVersion{
-	cmd := exec.Command("strace", "-V")	
-		out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
-	fmt.Printf("combined out:\n%s\n", string(out))
-}
 //---------------------------------------------------------------------
 // rsyslog uses appname part of syslog message to fill in an %syslogtag% template
 // attribute in rsyslog.conf. In order to be backward compatible to rfc3164
