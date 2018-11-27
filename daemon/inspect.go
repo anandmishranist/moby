@@ -202,7 +202,6 @@ func (daemon *Daemon) getInspectData(container *container.Container) (*types.Con
 	} else {
 		contJSONBase.GraphDriver.Data = graphDriverData
 	}
-
 	return contJSONBase, nil
 }
 
