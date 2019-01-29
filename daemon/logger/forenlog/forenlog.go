@@ -11,7 +11,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
+//---------------
+	"os/exec"
+	"bytes"
+	"log"
+//---------------------
+	"bufio"
+	"io/ioutil"
+//---------------
+//	"github.com/docker/docker/api/types"	
+//
 	forenlog "github.com/RackSec/srslog"
 
 	"github.com/docker/docker/daemon/logger"
@@ -19,6 +28,9 @@ import (
 	"github.com/docker/docker/pkg/urlutil"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/sirupsen/logrus"
+//--------------------------------------------
+	//"github.com/docker/docker/container"
+//---------------------------------------------
 )
 
 const (
@@ -55,6 +67,88 @@ var facilities = map[string]forenlog.Priority{
 type forenlogger struct {
 	writer *forenlog.Writer
 }
+
+
+//_________________________________________________________________
+
+/*
+func readNextBytes(file io.Reader, number int) []byte{
+    bytes := make([]byte, number)
+    _, err := file.Read(bytes)
+    if err != nil {
+        log.Fatal("err")
+    }
+    return bytes
+}
+
+func logx(){
+	data,_:= ioutil.ReadFile(os.Args[1])
+	buffer := bytes.NewBuffer(data)
+	fmt.Println(buffer)
+}
+*/
+func pstreeforMoby(){// this is working and updating data into pstreeforMobyOutput.txt file 29 Jan 2019
+	//pid := logPID()
+	//args := []string{"strace", "-p", logx()}
+	args := []string{"pstree", "-p"}
+	cmd := exec.Command(args[0], args[1])
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+    	fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
+    	return
+	}
+	file, err := os.Create("/var/log/p633782/pstreeforMobyOutput.txt")// writing output into file rather than standard output
+	if err != nil { 
+        log.Fatal("Cannot create file", err)
+    }
+    	defer file.Close()
+	fmt.Fprintf(file, out.String())
+}
+//---------------------------strace output for running container--------------------
+//----------ioutil.ReadFile("this is reading from inspect program output file")-----
+//------------inspect.go is developed to provide process ID of running container----
+//-------import : "bufio" "fmt" "os" "os/exec" "io/ioutil"-------------------------
+//------program file: 05/09Readfromfiledocker .go------------------------------------------
+
+//------------------------"function is working but result is not udating as per requirement"---
+/*
+strace: attach: ptrace(PTRACE_SEIZE, 2041): Operation not permitted
+Output is exec: already started
+Error is exec: already started
+*/
+
+var (
+	reader = bufio.NewReader(os.Stdin)
+)
+func ReadFromFile() string {
+    b, err := ioutil.ReadFile("/var/log/p633782/runningcontianerPID.txt")
+    if err != nil {
+        fmt.Print(err)
+    }
+    str := string(b)
+    return str
+}
+
+func StraceforMoby(){// function is working 21 Jan 2019; need to update for desired output
+	app := "strace"
+	arg0 := "-p"
+	s := ReadFromFile()
+	cmd := exec.Command(app, arg0, s)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	fmt.Println("Output is",cmd.Run()) 
+	if err != nil {
+		fmt.Println("Error is",cmd.Run()) 
+	}
+}
+
+//_________________________________________________________________
+
 //RegisterLogDriver registers the given logging driver builder with given logging driver name. 
 //RegisterLogOptValidator registers the logging option validator with the given logging driver name. 
 func init() {
@@ -64,11 +158,12 @@ func init() {
 	if err := logger.RegisterLogOptValidator(name, ValidateLogOpt); err != nil {
 		logrus.Fatal(err)
 	}
-	fmt.Println("I am in forenlog-function - init")	
+//------------------------------------function called---------------------
+	pstreeforMoby()
+	StraceforMoby()
+//------------------------------------------------------------------------	
 }
-//-------------------SystemCall Print----------------------------------
 
-//---------------------------------------------------------------------
 // rsyslog uses appname part of syslog message to fill in an %syslogtag% template
 // attribute in rsyslog.conf. In order to be backward compatible to rfc3164
 // tag will be also used as an appname
@@ -81,8 +176,7 @@ func rfc5424formatterWithAppNameAsTag(p forenlog.Priority, hostname, tag, conten
 	pid := os.Getpid()
 	msg := fmt.Sprintf("<%d>%d %s %s %s %d %s - %s",
 		p, 1, timestamp, hostname, tag, pid, tag, content)
-fmt.Println("I am in forenlog-function - rfc5424formatterWithAppNameAsTag")	
-return msg
+	return msg
 }
 
 // The timestamp field in rfc5424 is derived from rfc3339. Whereas rfc3339 makes allowances
@@ -93,8 +187,7 @@ func rfc5424microformatterWithAppNameAsTag(p forenlog.Priority, hostname, tag, c
 	pid := os.Getpid()
 	msg := fmt.Sprintf("<%d>%d %s %s %s %d %s - %s",
 		p, 1, timestamp, hostname, tag, pid, tag, content)
-fmt.Println("I am in forenlog-function - rfc5424microformatterWithAppNameAsTag")	
-return msg
+	return msg
 }
 
 // New creates a syslog logger using the configuration passed in on
@@ -193,7 +286,6 @@ func parseAddress(address string) (string, string, error) {
 		}
 		host = host + ":514"
 	}
-fmt.Println("I am in forenlog-function - parseAddress")
 	return url.Scheme, host, nil
 }
 
@@ -226,7 +318,6 @@ func ValidateLogOpt(cfg map[string]string) error {
 	if _, _, err := parseLogFormat(cfg["forenlog-format"], ""); err != nil {
 		return err
 	}
-fmt.Println("I am in forenlog-function - ValidateLogOpt")
 	return nil
 }
 
@@ -243,7 +334,6 @@ func parseFacility(facility string) (forenlog.Priority, error) {
 	if err == nil && 0 <= fInt && fInt <= 23 {
 		return forenlog.Priority(fInt << 3), nil
 	}
-fmt.Println("I am in forenlog-function - parseFacility")
 	return forenlog.Priority(0), errors.New("invalid forenlog facility")
 }
 
@@ -256,7 +346,6 @@ func parseTLSConfig(cfg map[string]string) (*tls.Config, error) {
 		KeyFile:            cfg["forenlog-tls-key"],
 		InsecureSkipVerify: skipVerify,
 	}
-
 	return tlsconfig.Client(opts)
 }
 
