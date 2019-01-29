@@ -4,8 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"os"
+//	"os/exec"
+	"log"
+//
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types" 
 	"github.com/docker/docker/api/types/backend"
 	networktypes "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/versions"
@@ -52,7 +56,6 @@ func (daemon *Daemon) ContainerInspectCurrent(name string, size bool) (*types.Co
 			apiNetworks[name] = epConf.EndpointSettings.Copy()
 		}
 	}
-
 	mountPoints := container.GetMountPoints()
 	networkSettings := &types.NetworkSettings{
 		NetworkSettingsBase: types.NetworkSettingsBase{
@@ -124,12 +127,22 @@ func (daemon *Daemon) containerInspect120(name string) (*v1p20.ContainerJSON, er
 	}, nil
 }
 
+//-----------------------logPID---------writing PID of running container------------
+func logPID(a int){
+	file, err2 := os.Create("/var/log/p633782/runningcontianerPID.txt") //For more granular writes, open a file for writing; working 29 Jan 2019
+	if err2 != nil {
+		log.Fatal("failed to create")
+	}
+	fmt.Fprintln(file, a)
+}
+//--------------------------------------------------------------------------------
+
 func (daemon *Daemon) getInspectData(container *container.Container) (*types.ContainerJSONBase, error) {
 	// make a copy to play with
 	hostConfig := *container.HostConfig
 
 	children := daemon.children(container)
-	hostConfig.Links = nil // do not expose the internal structure
+	hostConfig.Links = nil // do not expose the intFernal structure
 	for linkAlias, child := range children {
 		hostConfig.Links = append(hostConfig.Links, fmt.Sprintf("%s:%s", child.Name, linkAlias))
 	}
@@ -145,22 +158,24 @@ func (daemon *Daemon) getInspectData(container *container.Container) (*types.Con
 			Log:           append([]*types.HealthcheckResult{}, container.State.Health.Log...),
 		}
 	}
-
-	containerState := &types.ContainerState{
+//ContainerState (is struct type; api/types/types.go) stores container's running state. Part of ContainerJSONBase and will return by "inspect" command
+	containerState := &types.ContainerState{  
 		Status:     container.State.StateString(),
 		Running:    container.State.Running,
 		Paused:     container.State.Paused,
 		Restarting: container.State.Restarting,
 		OOMKilled:  container.State.OOMKilled,
 		Dead:       container.State.Dead,
-		Pid:        container.State.Pid,
+		Pid:        container.State.Pid, // contianer ID , int type ; 
 		ExitCode:   container.State.ExitCode(),
 		Error:      container.State.ErrorMsg,
 		StartedAt:  container.State.StartedAt.Format(time.RFC3339Nano),
 		FinishedAt: container.State.FinishedAt.Format(time.RFC3339Nano),
 		Health:     containerHealth,
 	}
-
+//--------------------------------------logPID function called------------------
+	logPID(containerState.Pid)
+//------------------------------------------------------------------------------
 	contJSONBase := &types.ContainerJSONBase{
 		ID:           container.ID,
 		Created:      container.Created.Format(time.RFC3339Nano),
@@ -177,6 +192,8 @@ func (daemon *Daemon) getInspectData(container *container.Container) (*types.Con
 		ProcessLabel: container.ProcessLabel,
 		ExecIDs:      container.GetExecIDs(),
 		HostConfig:   &hostConfig,
+
+
 	}
 
 	// Now set any platform-specific fields
